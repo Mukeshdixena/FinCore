@@ -1,0 +1,22 @@
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: fincore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fincore_db
+      POSTGRES_USER: fincore_app
+      POSTGRES_PASSWORD: local_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - fincore_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fincore_app -d fincore_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fincore_postgres_data:
