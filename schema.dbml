@@ -1,0 +1,131 @@
+
+Project FinCore {
+  database_type: 'PostgreSQL'
+  Note: 'Payment and transaction processing backend'
+}
+
+Enum user_status {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+Enum account_status {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+Enum transfer_status {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+Enum ledger_entry_type {
+  DEBIT
+  CREDIT
+}
+
+Enum idempotency_status {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+Table users {
+  id uuid [pk]
+  full_name varchar(150) [not null]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255) [not null]
+  status user_status [not null, default: 'ACTIVE']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table accounts {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  account_number varchar(34) [not null, unique]
+  currency char(3) [not null]
+  status account_status [not null, default: 'ACTIVE']
+  balance_minor bigint [not null, default: 0]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    user_id
+    (user_id, currency)
+  }
+}
+
+Table transfers {
+  id uuid [pk]
+  reference varchar(50) [not null, unique]
+  source_account_id uuid [not null, ref: > accounts.id]
+  destination_account_id uuid [not null, ref: > accounts.id]
+  amount_minor bigint [not null]
+  currency char(3) [not null]
+  status transfer_status [not null, default: 'PENDING']
+  description varchar(255)
+  failure_reason varchar(500)
+  created_at timestamptz [not null]
+  completed_at timestamptz
+
+  indexes {
+    source_account_id
+    destination_account_id
+    (status, created_at)
+  }
+}
+
+Table ledger_entries {
+  id uuid [pk]
+  transfer_id uuid [not null, ref: > transfers.id]
+  account_id uuid [not null, ref: > accounts.id]
+  entry_type ledger_entry_type [not null]
+  amount_minor bigint [not null]
+  currency char(3) [not null]
+  created_at timestamptz [not null]
+
+  indexes {
+    transfer_id
+    (account_id, created_at)
+  }
+}
+
+Table idempotency_records {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  idempotency_key varchar(255) [not null]
+  request_hash varchar(64) [not null]
+  status idempotency_status [not null, default: 'IN_PROGRESS']
+  response_status int
+  response_body jsonb
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  expires_at timestamptz
+
+  indexes {
+    (user_id, idempotency_key) [unique]
+  }
+}
+
+Table audit_logs {
+  id uuid [pk]
+  actor_user_id uuid
+  action varchar(100) [not null]
+  entity_type varchar(100) [not null]
+  entity_id uuid
+  correlation_id uuid
+  details jsonb
+  created_at timestamp [not null]
+
+  indexes {
+    (entity_type, entity_id)
+    created_at
+    correlation_id
+  }
+}
