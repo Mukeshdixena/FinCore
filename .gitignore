@@ -1,8 +1,18 @@
 HELP.md
 target/
+*.class
+*.log
+/out/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+### Local configuration ###
+.env
+.env.*
+!.env.example
+/src/main/resources/application-local.properties
+/src/test/resources/application-local.properties
 
 ### STS ###
 .apt_generated
